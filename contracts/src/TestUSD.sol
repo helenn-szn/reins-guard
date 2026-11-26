@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+/// @title TestUSD
+/// @notice Minimal 6-decimal test dollar for the Reins Guard demo on Base Sepolia.
+///         Anyone can mint a little, so judges and testers can try the vault without faucets.
+contract TestUSD {
+    string public constant name = "Reins Test USD";
+    string public constant symbol = "rUSD";
+    uint8 public constant decimals = 6;
+    uint256 public constant MINT_LIMIT = 1_000e6;
+
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+
+    function mint(address to, uint256 amount) external {
+        require(amount <= MINT_LIMIT, "rUSD: max 1,000 per mint");
+        totalSupply += amount;
+        balanceOf[to] += amount;
+        emit Transfer(address(0), to, amount);
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        _move(msg.sender, to, amount);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        uint256 allowed = allowance[from][msg.sender];
+        if (allowed != type(uint256).max) {
+            require(allowed >= amount, "rUSD: allowance");
+            allowance[from][msg.sender] = allowed - amount;
+        }
+        _move(from, to, amount);
+        return true;
+    }
+
+    function _move(address from, address to, uint256 amount) internal {
+        require(balanceOf[from] >= amount, "rUSD: balance");
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(from, to, amount);
+    }
+}
